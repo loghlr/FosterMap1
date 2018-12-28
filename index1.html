@@ -18,7 +18,7 @@
     </style>
 
     <script type="text/javascript">
-        var map, ctylayer, infoWindow, heatmap;
+        var map, ctylayer, infoWindow, hoverWindow, heatmap;
         //var ctyurl = 'https://loghlr.github.io/USCountyOverlays1/layers/GA1.json';
         var ctyurl = 'layers/GA1.json';
 
@@ -60,8 +60,13 @@
           // goejson more efficient than kml or others
           ctylayer.loadGeoJson(ctyurl, {}, getBounds);
 
-          ctylayer.addListener('click', showHeatmap);
           infoWindow = new google.maps.InfoWindow();
+          ctylayer.addListener('click', showHeatmap);
+          hoverWindow = new google.maps.InfoWindow({
+              disableAutoPan: true,
+          });
+          ctylayer.addListener('mouseover', showName);
+          ctylayer.addListener('mouseout', hideName);
 
             // instantiate heatmap layer
             heatmap = new google.maps.visualization.HeatmapLayer({
@@ -89,6 +94,7 @@
           }, [])
           return { total: freqtot, data: h1 } ;
         }
+        // county click event handler:
         function showHeatmap(event) {
           var cofips = event.feature.getProperty('GEO_ID').substr(-5);
           var hm = getHeatmapData( cofips, fd1.ChildRemPlc.data );
@@ -100,6 +106,17 @@
           infoWindow.setPosition(event.latLng);
           infoWindow.open(map);
         }
+        // todo: county mouseover event handler (show name)
+        function showName(event) {
+          var msg = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
+          hoverWindow.setContent(msg);
+          hoverWindow.setPosition(event.latLng);
+          hoverWindow.open(map);
+        }
+        function hideName(event) {
+          hoverWindow.close();
+        }
+
     </script>
 </head>
 
