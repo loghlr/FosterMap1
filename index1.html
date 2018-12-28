@@ -5,7 +5,7 @@
     <!-- may fix scroll zoom, but brings 100% height issue?  -->
     <meta http-equiv="X-UA-Compatible" content="IE=10" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>GA Foster Placement Itensity Map v0.1</title>
+    <title>GA Foster Placement Intensity Map v0.1</title>
 
     <style>
         #map { height: 100%; }
@@ -73,6 +73,7 @@
 
         // setting heatmap layer data, geojson layer properties, see https://developers.google.com/maps/documentation/javascript/examples/layer-data-event
         function getHeatmapData( cofips, fd2 ) {
+          var freqtot = 0;
           var h1 = fd2.remcofips.reduce(function(y,x,i,z) {
               if( x==cofips ) {
                   var loc = new google.maps.LatLng(fd2.plczctalat[i], fd2.plczctalon[i]);
@@ -82,20 +83,22 @@
                   } else {
                       y.push(loc);
                   }
+                  freqtot += fd2.Freq[i] ;
               }
               return y;
           }, [])
-          return h1;
+          return { total: freqtot, data: h1 } ;
         }
         function showHeatmap(event) {
+          var cofips = event.feature.getProperty('GEO_ID').substr(-5);
+          var hm = getHeatmapData( cofips, fd1.ChildRemPlc.data );
+          heatmap.setData( hm.data );
+
           var msg = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
+          msg = '<pre>' + msg + ': Placement Locations of ' + hm.total + ' Children\nin Foster Care ' + fd1.ChildRemPlc.period + '</pre>';
           infoWindow.setContent(msg);
           infoWindow.setPosition(event.latLng);
           infoWindow.open(map);
-
-          var cofips = event.feature.getProperty('GEO_ID').substr(-5);
-          var hmdata = getHeatmapData( cofips, fd1.ChildRemPlc.data );
-          heatmap.setData( hmdata );
         }
     </script>
 </head>
