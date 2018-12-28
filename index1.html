@@ -96,6 +96,7 @@
         }
         // county click event handler:
         function showHeatmap(event) {
+          hoverWindow.close();
           var cofips = event.feature.getProperty('GEO_ID').substr(-5);
           var hm = getHeatmapData( cofips, fd1.ChildRemPlc.data );
           heatmap.setData( hm.data );
