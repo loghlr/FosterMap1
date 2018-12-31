@@ -15,12 +15,18 @@
           margin: 0;
           padding: 0;
         }
+        .infoBox {
+            color: white;
+            font-size: 13px;
+            white-space: nowrap;
+        }
     </style>
 
     <script type="text/javascript">
         var map, ctylayer, infoWindow, hoverWindow, heatmap;
         //var ctyurl = 'https://loghlr.github.io/USCountyOverlays1/layers/GA1.json';
         var ctyurl = 'layers/GA1.json';
+        var hmlayerfield = 'In Foster Care 2017-12-08' ;
 
         function initMap() {
           map = new google.maps.Map(document.getElementById('map'), {
@@ -41,7 +47,7 @@
             map: map,
             style: {
               clickable: true,
-              strokeColor: 'gray',
+              strokeColor: 'white',
               strokeWeight: 1,
               fillOpacity: 0,
             }
@@ -61,19 +67,30 @@
           ctylayer.loadGeoJson(ctyurl, {}, getBounds);
 
           infoWindow = new google.maps.InfoWindow();
-          ctylayer.addListener('click', showHeatmap);
-          hoverWindow = new google.maps.InfoWindow({
+          // InfoWindow capturing mousewheel events intended for map. can't seem to remove listener. switch to https://github.com/googlemaps/v3-utility-library/tree/master/infobox
+          InfoBox.init() ; // infobox dependent on google.maps, so load here.
+          hoverWindow = new InfoBox({
               disableAutoPan: true,
+              enableEventPropagation: true,
+              alignBottom: true,
+              maxWidth: 0,
+              xboxStyle: {
+                  color: 'white',
+              },
+              closeBoxURL: '',
           });
-          ctylayer.addListener('mouseover', showName);
+
+          ctylayer.addListener('click', showHeatmap);
+          //ctylayer.addListener('mouseover', showName); // captures entry to polygon only
+          ctylayer.addListener('mousemove', showName);
           ctylayer.addListener('mouseout', hideName);
 
-            // instantiate heatmap layer
-            heatmap = new google.maps.visualization.HeatmapLayer({
-              map: map,
-              radius: 0.10,
-              dissipating: false,
-            });
+          // instantiate (empty) heatmap layer
+          heatmap = new google.maps.visualization.HeatmapLayer({
+            map: map,
+            radius: 0.10,
+            dissipating: false,
+          });
         }
 
         // setting heatmap layer data, geojson layer properties, see https://developers.google.com/maps/documentation/javascript/examples/layer-data-event
@@ -82,13 +99,13 @@
           var h1 = fd2.remcofips.reduce(function(y,x,i,z) {
               if( x==cofips ) {
                   var loc = new google.maps.LatLng(fd2.plczctalat[i], fd2.plczctalon[i]);
-                  //console.log( loc.lat()+','+loc.lng()+','+fd2.Freq[i] );
-                  if( fd2.Freq[i] > 1 ) {
-                      y.push({ location: loc, weight: fd2.Freq[i] });
-                  } else {
+                  console.log( loc.lat()+','+loc.lng()+','+fd2[hmlayerfield][i] );
+                  if( fd2[hmlayerfield][i] > 1 ) {
+                      y.push({ location: loc, weight: fd2[hmlayerfield][i] });
+                  } else if( fd2[hmlayerfield][i] == 1 ) {
                       y.push(loc);
                   }
-                  freqtot += fd2.Freq[i] ;
+                  freqtot += fd2[hmlayerfield][i] ;
               }
               return y;
           }, [])
@@ -102,20 +119,26 @@
           heatmap.setData( hm.data );
 
           var msg = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
-          msg = '<pre>' + msg + ': Placement Locations of ' + hm.total + ' Children\nin Foster Care ' + fd1.ChildRemPlc.period + '</pre>';
+          msg = '<pre>' + msg + ': Placement Concentrations of ' + hm.total + ' Children\n ' + hmlayerfield + '</pre>';
           infoWindow.setContent(msg);
           infoWindow.setPosition(event.latLng);
           infoWindow.open(map);
         }
-        // todo: county mouseover event handler (show name)
+
+        // county mousein event handler (show name)
+        var prevhovermsg = undefined;
         function showName(event) {
           var msg = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
-          hoverWindow.setContent(msg);
-          hoverWindow.setPosition(event.latLng);
-          hoverWindow.open(map);
+          if( msg == prevhovermsg ) { // only show once when 2+ mousemove events
+              hoverWindow.setContent(msg);
+              hoverWindow.setPosition(event.latLng); // using bound.getCenter fails with non-convex shapes.
+              hoverWindow.open(map);
+          }
+          prevhovermsg = msg;
         }
         function hideName(event) {
           hoverWindow.close();
+          hoverWindow.setContent(undefined);
         }
 
     </script>
@@ -125,8 +148,10 @@
 <div id="map"></div>
 <script type="text/javascript" src="GARemPlc1.js"> // loads foster care placement lat/lon into fd1. </script>
 <script type="text/javascript" src='darkmapstyle.js'></script>
+<script type="text/javascript" src='infobox.js'></script>
 
 <!-- Replace key with your API key, google's: AIzaSyCkUOdZ5y7hMm0yrcCQoCvLwzdM6M8s5qk. For heatmaps: &libraries=visualization-->
 <script async defer src="https://maps.googleapis.com/maps/api/js?callback=initMap&libraries=visualization&key=AIzaSyAN9K29KRiNUiLiM88oJnHGqnmTqLotNiM"></script>
+<xscript src="https://maps.googleapis.com/maps/api/js?callback=initMap&libraries=visualization&key=AIzaSyAN9K29KRiNUiLiM88oJnHGqnmTqLotNiM"></script>
 </body>
 
