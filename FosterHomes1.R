@@ -58,6 +58,20 @@ summary(as.numeric(table( a1$plczcta )))
 tail(sort(table( a1$plczctalat <- zc1$lat[l11], useNA='always' )))
 tail(sort(table( a1$plczctalon <- zc1$lon[l11], useNA='always' )))
 
+# link a1 to AFCARS
+system.time(load( '/fci/reports/ga/data/County_incare.RData' )) # 3s, d1, y, endofperiod, begofperiod
+prop.table(table(!is.na(l11 <- match( a1$AFCARS_ID, d1[,4] )))) # 98.9%, 728 unlinked
+# todo: check unlinked.
+a1$plctp <- d1$plctp[l11]
+summary(a1$perdiem <- round( d1$MonthlyFCPayment[l11]/(365.25/12) ))
+
+# Accumulate indicators into frequency fields:
+# too big: dim(x2 <- table( 'RemovalZip'=a1$remzip5[i1], 'RemovalCounty'=a1$REMOVAL_COUNTY[i1], 'PlacementZip20171208'=a1$plczip5[i1], 'PlacementCounty'=a1$PLACEMENT_COUNTY[i1] ))
+# too big: dim(x2 <- xtabs(  ~ remzip5+REMOVAL_COUNTY+plczip5+PLACEMENT_COUNTY, data=a1[i1,] ))
+#a1$p1 <- do.call( paste, c(a1[, c('remzip5','REMOVAL_COUNTY','plczip5','PLACEMENT_COUNTY')], sep=',') )
+f1 <- c('remcofips','plccofips','plczcta','plczctalat','plczctalon')
+a1$p1 <- do.call( paste, c(a1[, f1], sep='|') )
+
 # limit to in foster care on lastday:
 summary(a1$lastday <- as.Date( a1$LAST_DAY, format='%d-%b-%Y' ))
 #        Min.      1st Qu.       Median         Mean      3rd Qu.         Max. 
@@ -66,32 +80,49 @@ table( i1 <- a1$lastday == max(a1$lastday) ) # 19.5%
 #FALSE  TRUE 
 #55239 13362
 
-# link a1 to AFCARS
-
-# Accumulate indicators into frequency fields:
-# too big: dim(x2 <- table( 'RemovalZip'=a1$remzip5[i1], 'RemovalCounty'=a1$REMOVAL_COUNTY[i1], 'PlacementZip20171208'=a1$plczip5[i1], 'PlacementCounty'=a1$PLACEMENT_COUNTY[i1] ))
-# too big: dim(x2 <- xtabs(  ~ remzip5+REMOVAL_COUNTY+plczip5+PLACEMENT_COUNTY, data=a1[i1,] ))
-#a1$p1 <- do.call( paste, c(a1[, c('remzip5','REMOVAL_COUNTY','plczip5','PLACEMENT_COUNTY')], sep=',') )
-f1 <- c('remcofips','plccofips','plczcta','plczctalat','plczctalon')
-a1$p1 <- do.call( paste, c(a1[, f1], sep='|') )
-# just in care last day:
-#dim(x1 <- data.frame(table( a1$p1[i1] ))) # 4628
+# in care last day:
 dim(x1 <- data.frame(xtabs( ~ a1$p1[i1] ))) # 4628
 sum(x1$Freq) # 13362
 x <- strsplit( as.character(x1[,1]), '|', fixed=T )
-#x <- t(sapply( x,function(x) c(x[1],x[2],x[3],x[4],x[5]) ))
 head(x <- t(sapply( x,function(y) c(y[1:length(f1)]) )))
 colnames(x) <- f1
 str(x2 <- cbind( data.frame(x), 'In Foster Care 2017-12-08'=x1$Freq ))
+(units <- c( 'In Foster Care 2017-12-08'='Children' ))
+
+# with family:
+sort(table( a1$PLACEMENT_TYPE ))
+nonfam <- !grepl( '^Relative|Parent|Non-Cust| Relative|Adopt', a1$PLACEMENT_TYPE, ignore.case=T )
+sort(table( a1$PLACEMENT_TYPE[nonfam] ))
+dim(x1 <- data.frame(xtabs( (!nonfam[i1]) ~ a1$p1[i1] ))) # 4628
+sum(x1$Freq) # 4324
+str(x2 <- cbind( x2, 'With Family 2017-12-08'=x1$Freq ))
+(units <- c( units, 'With Family 2017-12-08'='Children' ))
+
+# with non-family:
+dim(x1 <- data.frame(xtabs( nonfam[i1] ~ a1$p1[i1] ))) # 4628
+sum(x1$Freq) # 9038
+str(x2 <- cbind( x2, 'With Non-Family 2017-12-08'=x1$Freq ))
+(units <- c( units, 'With Non-Family 2017-12-08'='Children' ))
+
+# per-diems:
+dim(x1 <- data.frame(xtabs( pmax(0,a1$perdiem[i1],na.rm=T) ~ a1$p1[i1] ))) # 4628
+sum(x1$Freq) # 730348
+str(x2 <- cbind( x2, 'Per-Diem on 2017-12-08'=x1$Freq ))
+(units <- c( units, 'Per-Diem on 2017-12-08'='Dollars' ))
+
+todo:
+# family per-diems:
+dim(x1 <- data.frame(xtabs( pmax(0,a1$perdiem[i1],na.rm=T) ~ a1$p1[i1] ))) # 4628
+sum(x1$Freq) # 730348
+str(x2 <- cbind( x2, 'Per-Diem on 2017-12-08'=x1$Freq ))
+(units <- c( units, 'Per-Diem on 2017-12-08'='Dollars' ))
 
 x2[sample(nrow(x2),10),]
 # probably ok for public?
 
 require( rjson )
 # for each indicator, need unit and name
-js1 <- toJSON(list(
-ChildRemPlc=list( period='Point-in-Time 2017-12-08', data=x2 )
-))
+js1 <- toJSON(list( data=x2, units=units ))
 js1 <- gsub( '],', '\n],\n', js1 )
 #js1 <- gsub( '\\[', '[\n', js1 )
 js1 <- gsub( '"NA"', '""', js1 )

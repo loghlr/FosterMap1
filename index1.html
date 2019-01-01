@@ -26,7 +26,9 @@
         var map, ctylayer, infoWindow, hoverWindow, heatmap;
         //var ctyurl = 'https://loghlr.github.io/USCountyOverlays1/layers/GA1.json';
         var ctyurl = 'layers/GA1.json';
-        var hmlayerfield = 'In Foster Care 2017-12-08' ;
+        //var hmlayerfield = 'In Foster Care 2017-12-08';
+        var hmlayerfield = 'With Non-Family 2017-12-08';
+        var cofipsselected = undefined, cofipsname = undefined;
 
         function initMap() {
           map = new google.maps.Map(document.getElementById('map'), {
@@ -99,7 +101,7 @@
           var h1 = fd2.remcofips.reduce(function(y,x,i,z) {
               if( x==cofips ) {
                   var loc = new google.maps.LatLng(fd2.plczctalat[i], fd2.plczctalon[i]);
-                  console.log( loc.lat()+','+loc.lng()+','+fd2[hmlayerfield][i] );
+                  //console.log( loc.lat()+','+loc.lng()+','+fd2[hmlayerfield][i] );
                   if( fd2[hmlayerfield][i] > 1 ) {
                       y.push({ location: loc, weight: fd2[hmlayerfield][i] });
                   } else if( fd2[hmlayerfield][i] == 1 ) {
@@ -114,15 +116,34 @@
         // county click event handler:
         function showHeatmap(event) {
           hoverWindow.close();
-          var cofips = event.feature.getProperty('GEO_ID').substr(-5);
-          var hm = getHeatmapData( cofips, fd1.ChildRemPlc.data );
-          heatmap.setData( hm.data );
-
-          var msg = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
-          msg = '<pre>' + msg + ': Placement Concentrations of ' + hm.total + ' Children\n ' + hmlayerfield + '</pre>';
-          infoWindow.setContent(msg);
+          cofipsselected = event.feature.getProperty('GEO_ID').substr(-5);
+          cofipsname = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
+          updateHeatmap(hmlayerfield);
           infoWindow.setPosition(event.latLng);
           infoWindow.open(map);
+        }
+
+        // callback for select list in infoWindow:
+        function updateHeatmap( hmlayerfield1 ) {
+          hmlayerfield = hmlayerfield1;
+          var hm = getHeatmapData( cofipsselected, fd1.data );
+          heatmap.setData( hm.data );
+
+          //var hmlayerfields = Object.keys(fd1.data).filter( function(x) {return /^[^rp]/.test(x)} ) // not ^rem|plc fields
+          var hmlayerfields = Object.keys(fd1.units);
+          var msg = cofipsname;
+          msg += ': Placement Concentrations of ';
+          if( fd1.units[hmlayerfield] == 'Dollars' ) {
+              msg += '$' + hm.total.toFixed(0) + '<br>';
+          } else {
+              msg += hm.total + '<br>' + fd1.units[hmlayerfield] + ' ';
+          }
+          msg += '<select onChange="javascript:updateHeatmap(this.options[this.selectedIndex].value);">';
+          hmlayerfields.forEach( function(x) {
+              msg += '<option' + ((x==hmlayerfield)?' selected>':'>') + x + '</option>';
+          });
+          msg += '</select>';
+          infoWindow.setContent(msg);
         }
 
         // county mousein event handler (show name)
@@ -152,6 +173,5 @@
 
 <!-- Replace key with your API key, google's: AIzaSyCkUOdZ5y7hMm0yrcCQoCvLwzdM6M8s5qk. For heatmaps: &libraries=visualization-->
 <script async defer src="https://maps.googleapis.com/maps/api/js?callback=initMap&libraries=visualization&key=AIzaSyAN9K29KRiNUiLiM88oJnHGqnmTqLotNiM"></script>
-<xscript src="https://maps.googleapis.com/maps/api/js?callback=initMap&libraries=visualization&key=AIzaSyAN9K29KRiNUiLiM88oJnHGqnmTqLotNiM"></script>
 </body>
 
