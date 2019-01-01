@@ -96,47 +96,52 @@
         }
 
         // setting heatmap layer data, geojson layer properties, see https://developers.google.com/maps/documentation/javascript/examples/layer-data-event
-        function getHeatmapData( cofips, fd2 ) {
-          var freqtot = 0;
-          var h1 = fd2.remcofips.reduce(function(y,x,i,z) {
-              if( x==cofips ) {
+        function getHeatmapData( regfips, fd2 ) {
+          var layertot = 0, inregfipstot = 0;
+          var h1 = fd2.remcofips.reduce(function(tot,cur,i,arr) {
+              if( regfips.includes(cur) ) {
                   var loc = new google.maps.LatLng(fd2.plczctalat[i], fd2.plczctalon[i]);
                   //console.log( loc.lat()+','+loc.lng()+','+fd2[hmlayerfield][i] );
                   if( fd2[hmlayerfield][i] > 1 ) {
-                      y.push({ location: loc, weight: fd2[hmlayerfield][i] });
+                      tot.push({ location: loc, weight: fd2[hmlayerfield][i] });
                   } else if( fd2[hmlayerfield][i] == 1 ) {
-                      y.push(loc);
+                      tot.push(loc);
                   }
-                  freqtot += fd2[hmlayerfield][i] ;
+                  layertot += fd2[hmlayerfield][i] ;
+                  if( regfips.includes(fd2.plccofips[i]) ) inregfipstot += fd2[hmlayerfield][i] ;
               }
-              return y;
+              return tot;
           }, [])
-          return { total: freqtot, data: h1 } ;
+          return { total: layertot, inregion: inregfipstot, data: h1 } ;
         }
         // county click event handler:
         function showHeatmap(event) {
           hoverWindow.close();
+          this.revertStyle(); // clear feature highlights
           cofipsselected = event.feature.getProperty('GEO_ID').substr(-5);
           cofipsname = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
-          updateHeatmap(hmlayerfield);
           infoWindow.setPosition(event.latLng);
           infoWindow.open(map);
+          // highlight this feature, style applies to the whole array of polygons, solution:
+          this.overrideStyle(event.feature, {strokeWeight: 4});
+          updateHeatmap(hmlayerfield); // lags, put at end
         }
 
         // callback for select list in infoWindow:
         function updateHeatmap( hmlayerfield1 ) {
           hmlayerfield = hmlayerfield1;
+          // use globals for select update trigger
           var hm = getHeatmapData( cofipsselected, fd1.data );
-          heatmap.setData( hm.data );
-
-          //var hmlayerfields = Object.keys(fd1.data).filter( function(x) {return /^[^rp]/.test(x)} ) // not ^rem|plc fields
-          var hmlayerfields = Object.keys(fd1.units);
           var msg = cofipsname;
           msg += ': Placement Concentrations of ';
+
+          var hmlayerfields = Object.keys(fd1.units);
+          // formatting depends on units:
+          var totfmt = hm.total.toFixed(0).replace(/\d(?=(\d{3})+$)/g, '$&,') ;
           if( fd1.units[hmlayerfield] == 'Dollars' ) {
-              msg += '$' + hm.total.toFixed(0) + '<br>';
+              msg += '$' + totfmt + ' (' + Math.round(100*hm.inregion/hm.total) + '% in region)<br>';
           } else {
-              msg += hm.total + '<br>' + fd1.units[hmlayerfield] + ' ';
+              msg += totfmt + ' (' + Math.round(100*hm.inregion/hm.total) + '% in region)<br>' + fd1.units[hmlayerfield] + ' ';
           }
           msg += '<select onChange="javascript:updateHeatmap(this.options[this.selectedIndex].value);">';
           hmlayerfields.forEach( function(x) {
@@ -144,6 +149,7 @@
           });
           msg += '</select>';
           infoWindow.setContent(msg);
+          heatmap.setData( hm.data ); // lags, put at end
         }
 
         // county mousein event handler (show name)
