@@ -110,12 +110,7 @@ sum(x1$Freq) # 730348
 str(x2 <- cbind( x2, 'Total Per-Diem on 2017-12-08'=x1$Freq ))
 (units <- c( units, 'Total Per-Diem on 2017-12-08'='Dollars' ))
 
-todo:
-# family per-diems:
-dim(x1 <- data.frame(xtabs( pmax(0,a1$perdiem[i1],na.rm=T) ~ a1$p1[i1] ))) # 4628
-sum(x1$Freq) # 730348
-str(x2 <- cbind( x2, 'Total Family Per-Diem on 2017-12-08'=x1$Freq ))
-(units <- c( units, 'Total Family Per-Diem on 2017-12-08'='Dollars' ))
+# todo: non-family per-diems?
 
 x2[sample(nrow(x2),10),]
 # probably ok for public?

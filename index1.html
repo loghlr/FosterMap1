@@ -29,6 +29,7 @@
         //var hmlayerfield = 'In Foster Care 2017-12-08';
         var hmlayerfield = 'With Non-Family 2017-12-08';
         var cofipsselected = undefined, cofipsname = undefined;
+        var regfipslayertotals = undefined;
 
         function initMap() {
           map = new google.maps.Map(document.getElementById('map'), {
@@ -98,8 +99,9 @@
         // setting heatmap layer data, geojson layer properties, see https://developers.google.com/maps/documentation/javascript/examples/layer-data-event
         function getHeatmapData( regfips, fd2 ) {
           var layertot = 0, inregfipstot = 0;
+          regfipslayertotals = {}; // sharing global for hover info
           var h1 = fd2.remcofips.reduce(function(tot,cur,i,arr) {
-              if( regfips.includes(cur) ) {
+              if( cur != '' && regfips.includes(cur) ) {
                   var loc = new google.maps.LatLng(fd2.plczctalat[i], fd2.plczctalon[i]);
                   //console.log( loc.lat()+','+loc.lng()+','+fd2[hmlayerfield][i] );
                   if( fd2[hmlayerfield][i] > 1 ) {
@@ -109,6 +111,7 @@
                   }
                   layertot += fd2[hmlayerfield][i] ;
                   if( regfips.includes(fd2.plccofips[i]) ) inregfipstot += fd2[hmlayerfield][i] ;
+                  regfipslayertotals[fd2.plccofips[i]] = (regfipslayertotals[fd2.plccofips[i]] || 0) + fd2[hmlayerfield][i] ;
               }
               return tot;
           }, [])
@@ -118,6 +121,7 @@
         function showHeatmap(event) {
           hoverWindow.close();
           this.revertStyle(); // clear feature highlights
+
           cofipsselected = event.feature.getProperty('GEO_ID').substr(-5);
           cofipsname = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
           infoWindow.setPosition(event.latLng);
@@ -139,9 +143,9 @@
           // formatting depends on units:
           var totfmt = hm.total.toFixed(0).replace(/\d(?=(\d{3})+$)/g, '$&,') ;
           if( fd1.units[hmlayerfield] == 'Dollars' ) {
-              msg += '$' + totfmt + ' (' + Math.round(100*hm.inregion/hm.total) + '% in region)<br>';
+              msg += '$' + totfmt + (hm.total != 0 ? ' (' + Math.round(100*hm.inregion/hm.total) + '% in region)':'') + '<br>';
           } else {
-              msg += totfmt + ' (' + Math.round(100*hm.inregion/hm.total) + '% in region)<br>' + fd1.units[hmlayerfield] + ' ';
+              msg += totfmt + (hm.total != 0 ? ' (' + Math.round(100*hm.inregion/hm.total) + '% in region)':'') + '<br>' + fd1.units[hmlayerfield] + ' ';
           }
           msg += '<select onChange="javascript:updateHeatmap(this.options[this.selectedIndex].value);">';
           hmlayerfields.forEach( function(x) {
@@ -152,12 +156,19 @@
           heatmap.setData( hm.data ); // lags, put at end
         }
 
-        // county mousein event handler (show name)
+        // county mousein/hover event handler (show name)
         var prevhovermsg = undefined;
         function showName(event) {
           var msg = event.feature.getProperty('NAME') + ' ' + event.feature.getProperty('LSAD');
           if( msg == prevhovermsg ) { // only show once when 2+ mousemove events
-              hoverWindow.setContent(msg);
+              if( cofipsname ) {
+                  var fips = event.feature.getProperty('GEO_ID').substr(-5);
+                  var n = (regfipslayertotals[fips] || 0);
+                  var nfmt = (fd1.units[hmlayerfield] == 'Dollars'?'$':'') + n.toFixed(0).replace(/\d(?=(\d{3})+$)/g, '$&,') ;
+                  hoverWindow.setContent(msg + '<br>(' + nfmt + ' from ' + cofipsname + ')');
+              } else {
+                  hoverWindow.setContent(msg);
+              }
               hoverWindow.setPosition(event.latLng); // using bound.getCenter fails with non-convex shapes.
               hoverWindow.open(map);
           }
