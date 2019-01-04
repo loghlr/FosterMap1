@@ -23,11 +23,11 @@
     </style>
 
     <script type="text/javascript">
+        // need some globals:
         var map, ctylayer, infoWindow, hoverWindow, heatmap;
         //var ctyurl = 'https://loghlr.github.io/USCountyOverlays1/layers/GA1.json';
         var ctyurl = 'layers/GA1.json';
-        var hmlayerfield = 'With Non-Family 2018-09-30'; // set when fd1 loads?
-        var cofipsselected = undefined, cofipsname = undefined;
+        var hmlayerfield = undefined, cofipsselected = undefined, cofipsname = undefined; // set first click
         var regfipslayertotals = undefined;
 
         function initMap() {
@@ -96,21 +96,21 @@
         }
 
         // setting heatmap layer data, geojson layer properties, see https://developers.google.com/maps/documentation/javascript/examples/layer-data-event
-        function getHeatmapData( regfips, fd2 ) {
+        function getHeatmapData( regfips, fd2, layerfield ) {
           var layertot = 0, inregfipstot = 0;
           regfipslayertotals = {}; // sharing global for hover info
           var h1 = fd2.remcofips.reduce(function(tot,cur,i,arr) {
               if( cur != '' && regfips.includes(cur) ) {
                   var loc = new google.maps.LatLng(fd2.plczctalat[i], fd2.plczctalon[i]);
-                  //console.log( loc.lat()+','+loc.lng()+','+fd2[hmlayerfield][i] );
-                  if( fd2[hmlayerfield][i] > 1 ) {
-                      tot.push({ location: loc, weight: fd2[hmlayerfield][i] });
-                  } else if( fd2[hmlayerfield][i] == 1 ) {
+                  //console.log( loc.lat()+','+loc.lng()+','+fd2[layerfield][i] );
+                  if( fd2[layerfield][i] > 1 ) {
+                      tot.push({ location: loc, weight: fd2[layerfield][i] });
+                  } else if( fd2[layerfield][i] == 1 ) {
                       tot.push(loc);
                   }
-                  layertot += fd2[hmlayerfield][i] ;
-                  if( regfips.includes(fd2.plccofips[i]) ) inregfipstot += fd2[hmlayerfield][i] ;
-                  regfipslayertotals[fd2.plccofips[i]] = (regfipslayertotals[fd2.plccofips[i]] || 0) + fd2[hmlayerfield][i] ;
+                  layertot += fd2[layerfield][i] ;
+                  if( regfips.includes(fd2.plccofips[i]) ) inregfipstot += fd2[layerfield][i] ;
+                  regfipslayertotals[fd2.plccofips[i]] = (regfipslayertotals[fd2.plccofips[i]] || 0) + fd2[layerfield][i] ;
               }
               return tot;
           }, [])
@@ -132,13 +132,13 @@
 
         // callback for select list in infoWindow:
         function updateHeatmap( hmlayerfield1 ) {
-          hmlayerfield = hmlayerfield1;
+          var hmlayerfields = Object.keys(fd1.units);
+          hmlayerfield = ( hmlayerfield1 || hmlayerfields[2] ); // default to [2]
           // use globals for select update trigger
-          var hm = getHeatmapData( cofipsselected, fd1.data );
+          var hm = getHeatmapData( cofipsselected, fd1.data, hmlayerfield );
           var msg = cofipsname;
           msg += ': Placement Concentrations of ';
 
-          var hmlayerfields = Object.keys(fd1.units);
           // formatting depends on units:
           var totfmt = hm.total.toFixed(0).replace(/\d(?=(\d{3})+$)/g, '$&,') ;
           if( fd1.units[hmlayerfield] == 'Dollars' ) {
