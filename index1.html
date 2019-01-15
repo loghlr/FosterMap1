@@ -133,7 +133,7 @@
         // callback for select list in infoWindow:
         function updateHeatmap( hmlayerfield1 ) {
           var hmlayerfields = Object.keys(fd1.units);
-          hmlayerfield = ( hmlayerfield1 || hmlayerfields[2] ); // default to [2]
+          hmlayerfield = ( hmlayerfield1 || hmlayerfields[0] ); // default to [0]
           // use globals for select update trigger
           var hm = getHeatmapData( cofipsselected, fd1.data, hmlayerfield );
           var msg = cofipsname;

@@ -116,17 +116,6 @@ table( i1 <- a1$remdate <= pointintime & (is.na(a1$lastday) | a1$lastday >= poin
 #FALSE  TRUE 
 #62227 13771 2018-09-30
 
-# in care last day:
-dim(x1 <- data.frame(xtabs( ~ a1$p1[i1] ))) # 4628
-sum(x1$Freq) # 13362
-x <- strsplit( as.character(x1[,1]), '|', fixed=T )
-head(x <- t(sapply( x,function(y) c(y[1:length(f1)]) )))
-colnames(x) <- f1
-x2 <- cbind( data.frame(x), x1$Freq )
-units <- c( 'Children' )
-names(units)[length(units)] <- colnames(x2)[ncol(x2)] <- paste('In Foster Care', pointintime)
-str(x2)
-
 # with family:
 sort(table( a1$PLACEMENT_TYPE ))
 #write.csv( data.frame(sort(table( a1$PLACEMENT_TYPE ))), '', quote=F )
@@ -138,9 +127,12 @@ paste(names(sort(table( a1$PLACEMENT_TYPE[!nonfam] ), decreasing=T)), collapse='
 # Relative - Paid, Adoptive Home, Relative - Unpaid, Parent/Primary Caretaker, Relative Foster Home, Non-Custodial Parent, ICPC - Relative, ICPC - Adoptive
 dim(x1 <- data.frame(xtabs( (!nonfam[i1]) ~ a1$p1[i1] ))) # 4691
 sum(x1$Freq) # 4526
-str(x2 <- cbind( x2, x1$Freq ))
-(units <- c( units, 'Children' ))
-names(units)[length(units)] <- colnames(x2)[ncol(x2)] <- paste('With Family', pointintime)
+x <- strsplit( as.character(x1[,1]), '|', fixed=T )
+head(x <- t(sapply( x,function(y) c(y[1:length(f1)]) )))
+colnames(x) <- f1
+x2 <- cbind( data.frame(x), x1$Freq )
+units <- c( 'Children' )
+names(units)[length(units)] <- colnames(x2)[ncol(x2)] <- paste('In Foster Care With Family', pointintime)
 str(x2)
 
 # with non-family:
@@ -148,7 +140,15 @@ dim(x1 <- data.frame(xtabs( nonfam[i1] ~ a1$p1[i1] ))) # 4691
 sum(x1$Freq) # 9245
 str(x2 <- cbind( x2, x1$Freq ))
 (units <- c( units, 'Children' ))
-names(units)[length(units)] <- colnames(x2)[ncol(x2)] <- paste('With Non-Family', pointintime)
+names(units)[length(units)] <- colnames(x2)[ncol(x2)] <- paste('In Foster Care With Non-Family', pointintime)
+str(x2)
+
+# in care last day:
+dim(x1 <- data.frame(xtabs( ~ a1$p1[i1] ))) # 4628
+sum(x1$Freq) # 13362
+str(x2 <- cbind( x2, x1$Freq ))
+(units <- c( units, 'Children' ))
+names(units)[length(units)] <- colnames(x2)[ncol(x2)] <- paste('In Foster Care', pointintime)
 str(x2)
 
 # per-diems:
@@ -156,7 +156,7 @@ dim(x1 <- data.frame(xtabs( pmax(0,a1$perdiem[i1],na.rm=T) ~ a1$p1[i1] ))) # 462
 sum(x1$Freq) # 730348
 str(x2 <- cbind( x2, x1$Freq ))
 (units <- c( units, 'Dollars' ))
-names(units)[length(units)] <- colnames(x2)[ncol(x2)] <- paste('Total Per-Diem on', pointintime)
+names(units)[length(units)] <- colnames(x2)[ncol(x2)] <- paste('Total Foster Care Per-Diem on', pointintime)
 str(x2)
 
 # todo: non-family per-diems?
