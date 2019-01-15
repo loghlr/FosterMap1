@@ -1,4 +1,6 @@
 # abb 12/28/2018: Tally foster home boarding county/zip by removal county (not zip)
+# abb 1/15/2019: alter coords of small ZCTAs to big ones nearby
+#source('FosterHomes1.R',echo=T,max.deparse.length=Inf)
 
 stabb='GA'
 Sys.umask('0133') # -rw-r--r--
@@ -36,9 +38,34 @@ table( nchar(as.character(a1$remzip5)), useNA='always' )
 #    0     5  <NA> 
 #  829 75169     0
 
+# zcta centroids?
+#http://download.geonames.org/export/zip/ # unclear provenance, but updated today? not sure how they were calculated, hoping center of mass of population or some such?
 str(zc1 <- read.table( '/fci/reports/us/census/geonameszip_US.txt.xz', sep='\t', header=F, as.is=T, colClasses='character' ))
 colnames(zc1) <- unlist(strsplit('co zip zipname statename statefips countyname countyfips communityname communityfips lat lon accuracy',' '))
+# ZCTA demographics, processed by me from ACS2017 5-year files:
+str(zp1 <- read.csv( '/fci/reports/us/data/census/ACS2017/ACS5US860_2017a.csv' ))
 
+table(!is.na(l11 <- match( sprintf('%05d',zp1[,1]), zc1[,2] ))) # 1081 (3.3%) don't match
+summary( zp1$hh[!is.na(l11)] )
+summary( zp1$hh[is.na(l11)] )
+#  Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#     0     271    1064    3593    4945   42546 
+#     0     266     794    3866    5036   36818
+# close enough to MAR to ignore NA.
+# To avoid identifiability, use alternate centroid in ZCTAs with < 10 households.
+# if count of households (zp1$hh[l11]) < 10, set centroid to the nearest centroid with hh >= 10:
+zc1$lat <- as.numeric(zc1$lat)
+zc1$lon <- as.numeric(zc1$lon)
+zc1$hh <- rep(NA,nrow(zc1))
+zc1$hh[l11[!is.na(l11)]] <- zp1$hh[!is.na(l11)]
+sum(i <- is.na(zc1$hh) | zc1$hh < 10 ) # 9068 small ZCTAs
+#j=which(i)[1]; zc1[j,]; zc1[-i,][which.min( (zc1$lat[j]-zc1$lat[-i])^2 + (zc1$lon[j]-zc1$lon[-i])^2 ),]
+k <- which(!i)[sapply( which(i), FUN=function(j) which.min( (zc1$lat[j]-zc1$lat[!i])^2 + (zc1$lon[j]-zc1$lon[!i])^2 ) )]
+stopifnot( zc1$hh[k] >= 10 )
+zc1$lat[i] <- zc1$lat[k]
+zc1$lon[i] <- zc1$lon[k]
+
+# now match the zips in foster address data:
 table(!is.na(l11 <- match( a1$remzip5, zc1[,2] ))) # 1072 (1.6%) don't match
 sort(table( as.character(a1$remzip5)[is.na(l11)], useNA='always' )) # 131 blank + erroneous
 tail(sort(table( a1$remzcta <- zc1[l11,2], useNA='always' )))
